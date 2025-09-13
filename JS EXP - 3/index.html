@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Drawing Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .drawing-tool-container {
+            border: 3px solid #333;
+            background-color: white;
+            padding: 0;
+        }
+
+        .tool-header {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-bottom: 2px solid #333;
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .canvas-container {
+            padding: 10px;
+            background-color: white;
+        }
+
+        #drawingCanvas {
+            width: 100%;
+            height: 500px;
+            border: 2px solid #333;
+            background-color: #fafafa;
+            cursor: crosshair;
+            display: block;
+        }
+
+        .controls {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+
+        .control-group {
+            display: inline-block;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-right: 8px;
+            color: #333;
+        }
+
+        select, input[type="color"], button {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            padding: 8px 15px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .clear-btn {
+            background-color: #f44336;
+        }
+
+        .clear-btn:hover {
+            background-color: #da190b;
+        }
+
+        .instructions {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Expected Output</h1>
+        
+        <div class="drawing-tool-container">
+            <div class="tool-header">SVG Drawing Tool</div>
+            
+            <div class="canvas-container">
+                <svg id="drawingCanvas" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Dynamic shapes will be added here -->
+                </svg>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="drawingMode">Tool:</label>
+                    <select id="drawingMode">
+                        <option value="freehand">Freehand</option>
+                        <option value="line">Line</option>
+                        <option value="rectangle">Rectangle</option>
+                        <option value="circle">Circle</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="strokeColor">Color:</label>
+                    <input type="color" id="strokeColor" value="#2196F3">
+                </div>
+
+                <div class="control-group">
+                    <label for="strokeWidth">Width:</label>
+                    <select id="strokeWidth">
+                        <option value="1">1px</option>
+                        <option value="2" selected>2px</option>
+                        <option value="3">3px</option>
+                        <option value="5">5px</option>
+                        <option value="8">8px</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button class="clear-btn" onclick="clearCanvas()">Clear Canvas</button>
+                </div>
+
+                <div class="instructions">
+                    <strong>Instructions:</strong> Click and drag to draw. Choose different tools and colors from the controls above. 
+                    Try drawing "ByteXL" like in the example!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const canvas = document.getElementById('drawingCanvas');
+        const drawingMode = document.getElementById('drawingMode');
+        const strokeColor = document.getElementById('strokeColor');
+        const strokeWidth = document.getElementById('strokeWidth');
+
+        // Drawing state
+        let isDrawing = false;
+        let currentPath = null;
+        let startX, startY;
+        let pathPoints = [];
+
+        // Get SVG coordinates from mouse event
+        function getSVGCoordinates(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.viewBox.baseVal.width / rect.width || 1;
+            const scaleY = canvas.viewBox.baseVal.height / rect.height || 1;
+            
+            return {
+                x: (event.clientX - rect.left) * scaleX,
+                y: (event.clientY - rect.top) * scaleY
+            };
+        }
+
+        // Mouse down event handler
+        canvas.addEventListener('mousedown', function(event) {
+            event.preventDefault();
+            isDrawing = true;
+            
+            const coords = getSVGCoordinates(event);
+            startX = coords.x;
+            startY = coords.y;
+
+            const mode = drawingMode.value;
+            const color = strokeColor.value;
+            const width = strokeWidth.value;
+
+            if (mode === 'freehand') {
+                // Create a new path for freehand drawing
+                currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                currentPath.setAttribute('stroke', color);
+                currentPath.setAttribute('stroke-width', width);
+                currentPath.setAttribute('fill', 'none');
+                currentPath.setAttribute('stroke-linecap', 'round');
+                currentPath.setAttribute('stroke-linejoin', 'round');
+                
+                pathPoints = [`M${startX},${startY}`];
+                currentPath.setAttribute('d', pathPoints.join(' '));
+                canvas.appendChild(currentPath);
+            } else {
+                // For shapes, create temporary element
+                if (mode === 'line') {
+                    currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    currentPath.setAttribute('x1', startX);
+                    currentPath.setAttribute('y1', startY);
+                    currentPath.setAttribute('x2', startX);
+                    currentPath.setAttribute('y2', startY);
+                } else if (mode === 'rectangle') {
+                    currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    currentPath.setAttribute('x', startX);
+                    currentPath.setAttribute('y', startY);
+                    currentPath.setAttribute('width', 0);
+                    currentPath.setAttribute('height', 0);
+                    currentPath.setAttribute('fill', 'none');
+                } else if (mode === 'circle') {
+                    currentPath = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    currentPath.setAttribute('cx', startX);
+                    currentPath.setAttribute('cy', startY);
+                    currentPath.setAttribute('r', 0);
+                    currentPath.setAttribute('fill', 'none');
+                }
+                
+                currentPath.setAttribute('stroke', color);
+                currentPath.setAttribute('stroke-width', width);
+                canvas.appendChild(currentPath);
+            }
+        });
+
+        // Mouse move event handler
+        canvas.addEventListener('mousemove', function(event) {
+            if (!isDrawing || !currentPath) return;
+            
+            event.preventDefault();
+            const coords = getSVGCoordinates(event);
+            const mode = drawingMode.value;
+
+            if (mode === 'freehand') {
+                // Add point to path
+                pathPoints.push(`L${coords.x},${coords.y}`);
+                currentPath.setAttribute('d', pathPoints.join(' '));
+            } else if (mode === 'line') {
+                currentPath.setAttribute('x2', coords.x);
+                currentPath.setAttribute('y2', coords.y);
+            } else if (mode === 'rectangle') {
+                const width = Math.abs(coords.x - startX);
+                const height = Math.abs(coords.y - startY);
+                const x = Math.min(startX, coords.x);
+                const y = Math.min(startY, coords.y);
+                
+                currentPath.setAttribute('x', x);
+                currentPath.setAttribute('y', y);
+                currentPath.setAttribute('width', width);
+                currentPath.setAttribute('height', height);
+            } else if (mode === 'circle') {
+                const radius = Math.sqrt(
+                    Math.pow(coords.x - startX, 2) + Math.pow(coords.y - startY, 2)
+                );
+                currentPath.setAttribute('r', radius);
+            }
+        });
+
+        // Mouse up event handler
+        canvas.addEventListener('mouseup', function(event) {
+            isDrawing = false;
+            currentPath = null;
+            pathPoints = [];
+        });
+
+        // Mouse leave event handler
+        canvas.addEventListener('mouseleave', function(event) {
+            isDrawing = false;
+            currentPath = null;
+            pathPoints = [];
+        });
+
+        // Prevent context menu on right click
+        canvas.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
+
+        // Clear canvas function
+        function clearCanvas() {
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+        }
+
+        // Initialize canvas viewBox for proper scaling
+        function initCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initCanvas);
+        window.addEventListener('resize', initCanvas);
+    </script>
+</body>
+</html>
